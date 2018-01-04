@@ -70,24 +70,25 @@ public class NIOServer {
 
 	// nio框架的处理模块
 	private void process(SelectionKey key) {
-		SocketChannel client = null;
+		SocketChannel socketChannel = null;
 		try {
 			// 异常下面 连接不到 避免不必要的异常抛出
 			if (key.isValid() && key.isAcceptable()) {
-				client = serverSocketChannel.accept();
+				//接收就绪获取客户端连接
+				socketChannel = serverSocketChannel.accept();
 				++client_no;
 				// 关键点一：非阻塞模式的改变
-				client.configureBlocking(false);
+				socketChannel.configureBlocking(false);
 				// 通过注册到selector上面告诉给服务 我需要你读取我传进来信息包
-				client.register(selector, SelectionKey.OP_READ);
+				socketChannel.register(selector, SelectionKey.OP_READ);
 				System.out.println("接收准备读取..............");
 			} else if (key.isValid() && key.isReadable()) {
 				// 服务端从SocketChannel读取客户端发送过来的信息
 				recBuffer.clear();
 				// key 和我们的通道是有引用
-				client = (SocketChannel) key.channel();
+				socketChannel = (SocketChannel) key.channel();
 				// len =512
-				int len = client.read(recBuffer);
+				int len = socketChannel.read(recBuffer);
 				if (len > 0) {
 					String msg = new String(recBuffer.array(), 0, len);
 					// 放入消息缓存队列
@@ -97,37 +98,32 @@ public class NIOServer {
 					// 客户端显现我们要精准定位
 					clientMsg.put(key, client_no);
 					// 控制灵敏度
-					client.register(selector, SelectionKey.OP_WRITE);
+					socketChannel.register(selector, SelectionKey.OP_WRITE);
 					System.out.println("服务单接收客户端读完又准备写........");
 				}
 			} else if (key.isValid() && key.isWritable()) {
 				if (!essiomMsg.containsKey(key)) {
 					return;
 				}
-				client = (SocketChannel) key.channel();
-				// postion =0 postion++
+				socketChannel = (SocketChannel) key.channel();
 				sendBuffer.clear();
-				// position= 512;
 				sendBuffer.put((essiomMsg.get(key) + "您好，Sam老师已经处理完成你的请求！").getBytes());
-				// limit =512
-				// postion =0
-				// 0 ---limit
 				// 读写切换 切换到读模式
 				sendBuffer.flip();
 				// 写信息
-				client.write(sendBuffer);
+				socketChannel.write(sendBuffer);
 				System.out.println("当前处理线程ID:" + Thread.currentThread().getId() + "  对客户端编号：" + client_no + "写出信息为："
 						+ essiomMsg.get(key) + "您好，Sam老师已经处理完成你的请求");
 				// 再注册 实际上就是驱动下一个业务的发生
-				client.register(selector, SelectionKey.OP_READ);
+				socketChannel.register(selector, SelectionKey.OP_READ);
 			}
 		} catch (IOException e) {
 			// 防止客户端非法下线
 			key.cancel();
 			try {
 				// 又里到外的关闭思想
-				client.socket().close();
-				client.close();
+				socketChannel.socket().close();
+				socketChannel.close();
 				System.out.println("【系统消息提示】 客户端： " + clientMsg.get(key) + " 已经非法下线！");
 				clientMsg.remove(key);
 			} catch (IOException e1) {

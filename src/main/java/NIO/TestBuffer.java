@@ -47,7 +47,7 @@ public class TestBuffer {
         System.out.println("clean数据始当前位置："+buffer.position());
         System.out.println("clean数据limit:"+buffer.limit());
         //clean只是重置位置，buffer里面的数据仍然未清空 但是不能直接put写数据 如果想继续写数据需要带调用compact方法
-        //原先的buffer的数据依然存在,clean方法和compact不能同时存在 clean后再写数据将会覆盖，compact则不会
+        //原先的buffer的数据依然存在,clean方法和compact不能同时存在 clean后再写数据将会覆盖，compact则不会 因为他会先复制出来
         while(buffer.hasRemaining())
         {
             System.out.print((char)buffer.get());

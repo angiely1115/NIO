@@ -11,7 +11,7 @@ import java.util.Scanner;
 import java.util.Set;
 
 public class NIOClient {
-	SocketChannel client;
+	SocketChannel socketChannel;
 	InetSocketAddress serverAddress = new InetSocketAddress("localhost", 8080);
 	Selector selector;
 	//Selector selector1;
@@ -20,16 +20,16 @@ public class NIOClient {
 
 	public NIOClient() throws IOException {
 		// 构造client实例
-		client = SocketChannel.open();
+		socketChannel = SocketChannel.open(serverAddress);
 		// 设置为非阻塞式 NON-BLOCKING
-		client.configureBlocking(false);
+		socketChannel.configureBlocking(false);
 		//线程绑定就没有 线程池
-		client.connect(serverAddress);
-		// 构造selector实例
+//		socketChannel.connect(serverAddress);
+//		// 构造selector实例
 		selector = Selector.open();
-
-		// 向管家注册连接事件
-		client.register(selector, SelectionKey.OP_CONNECT);
+//
+//		// 向管家注册连接事件
+//		client.register(selector, SelectionKey.OP_CONNECT);
 		// Netty Reactor线程池组 Tomcat bootStap 
 		//
 		//selector1 = Selector.open();
@@ -38,9 +38,9 @@ public class NIOClient {
 
 	public void session() throws IOException {
 
-		if (client.isConnectionPending()) {
-			client.finishConnect();
-			client.register(selector, SelectionKey.OP_WRITE);
+		if (socketChannel.isConnectionPending()) {
+			socketChannel.finishConnect();
+			socketChannel.register(selector, SelectionKey.OP_WRITE);
 			System.out.println("【系统消息提示】 已经连接到服务器，请发送您的消息！");
 
 		}
@@ -88,19 +88,19 @@ public class NIOClient {
 						sendBuffer.put(name.getBytes());
 						sendBuffer.flip();
 
-						client.write(sendBuffer);
+						socketChannel.write(sendBuffer);
 
-						client.register(selector, SelectionKey.OP_READ);
+						socketChannel.register(selector, SelectionKey.OP_READ);
 
 						// 服务器发送信息回来给客户端 去读
 					} else if (key.isValid() && key.isReadable()) {
 
 						receiveBuffer.clear();
-						int len = client.read(receiveBuffer);
+						int len = socketChannel.read(receiveBuffer);
 						if (len > 0) {
 							receiveBuffer.flip();
 							System.out.println("服务端反馈的消息:" + new String(receiveBuffer.array(), 0, len));
-							client.register(selector, SelectionKey.OP_WRITE);
+							socketChannel.register(selector, SelectionKey.OP_WRITE);
 							waitHelp = false;
 						}
 					}
@@ -109,8 +109,8 @@ public class NIOClient {
 				}
 			} catch (IOException e) {
 				((SelectionKey) keys).cancel();
-				client.socket().close();
-				client.close();
+				socketChannel.socket().close();
+				socketChannel.close();
 
 				return;
 			}
